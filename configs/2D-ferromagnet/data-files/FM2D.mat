@@ -1,0 +1,33 @@
+# =========================
+# Number of materials
+# =========================
+material:num-materials = 1
+
+# =========================
+# Material 1
+# =========================
+material[1]:material-name = FM
+
+# Atomic magnetic moment
+material[1]:atomic-spin-moment = 3.0 !muB
+
+# LLG parameters
+material[1]:damping-constant = 1
+material[1]:relative-gamma = 1.0
+
+# =========================
+# Exchange interactions
+# =========================
+# exchange-matrix[j] = J_1j
+
+material[1]:exchange-matrix[1] = 1.0e-21   # J_11 (nearest neighbour)
+
+# =========================
+# Magnetic anisotropy
+# =========================
+material[1]:uniaxial-anisotropy-constant = 5.0e-23   # K (J per atom)
+# material[1]:uniaxial-anisotropy-direction = 0,0,1 
+
+
+# Initialization
+material[1]:initial-spin-direction=random

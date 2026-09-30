@@ -1,0 +1,14 @@
+generator: ising_kac_tau_leaping
+output_dir: ../data/ising-smoke
+size: 8
+block: 2
+steps: 2
+temperature: 1.5
+interaction_strength: 1.0
+external_field: 0.0
+epsilon: 0.125
+domain_length_x: 1.0
+domain_length_y: 1.0
+tau_fraction: 0.01
+seed: 7
+device: cpu

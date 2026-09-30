@@ -1,0 +1,35 @@
+material:file = FM2D.mat
+
+create:crystal-structure = sc
+# create:periodic-boundaries
+create:periodic-boundaries-x = true
+create:periodic-boundaries-y = true
+create:periodic-boundaries-z = false
+create:spin-initialisation-random-seed = 1
+
+dimensions:unit-cell-size = 0.4
+dimensions:system-size-x = 409.4
+dimensions:system-size-y = 409.4
+dimensions:system-size-z = 0.4
+
+sim:program = time-series
+sim:integrator = llg-heun
+sim:time-step = 0.1!fs
+sim:total-time-steps = 10000000
+sim:time-steps-increment = 1
+
+sim:temperature = 10
+
+output:magnetisation
+output:material-mean-magnetisation
+
+output:output-rate = 1000
+
+config:atoms
+
+config:atoms-output-rate = 10000
+
+config:output-format = text
+
+screen:time-steps
+screen:magnetisation-length

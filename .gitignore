@@ -1,0 +1,28 @@
+__pycache__/
+.DS_Store
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+
+# Private scientific inputs and generated artifacts. These rules are anchored
+# at the repository root so src/deepmesod/data remains part of the package.
+/data/
+/outputs/
+/results/
+/checkpoints/
+/artifacts/
+/reports/
+/figures/generated/
+
+# Author-only requirements, provenance, and paper-validation utilities.
+/dev/agent_workspace/
+
+# Model states, cached inverse targets, rollouts, and prepared plot arrays.
+*.pt
+*.pth
+*.npy
+*.npz

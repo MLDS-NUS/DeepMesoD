@@ -1,0 +1,149 @@
+# Source-only reproduction manifest for the archived CrBr3 film experiment.
+# Set DEEPMESOD_DATA_ROOT to the directory containing the generated CrBr3
+# trajectories and choose a private DEEPMESOD_OUTPUT_ROOT.  The converter below
+# writes times in ns, while data.dt=0.002 documents the expected frame spacing.
+run:
+  name: CrBr3
+  seed: 122
+  output_dir: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3
+device: cuda
+simulation:
+  generator: Vampire
+  input_dir: data-file
+  description: 84-layer honeycomb CrBr3 film with a mid-plane stacking fault
+data:
+  dt: 0.002
+  # VAMPIRE produces the atomistic frames.  This converter is deliberately
+  # separate from the 2D square-block path: it maps absolute honeycomb
+  # coordinates to lattice-commensurate cells and groups three z layers.
+  coarse_graining:
+    command: coarse-grain-crbr3
+    coords_name: atoms-coords.data
+    stride_A: [50.0, 50.0]
+    block_A: [50.0, 50.0]
+    z_group: 3
+    time_unit: ns
+  train:
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed1/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed2/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed3/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed4/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed5/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed6/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed7/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed8/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed9/latt_b16x30_s16x30_z3
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed10/latt_b16x30_s16x30_z3
+  test:
+    - ${DEEPMESOD_DATA_ROOT}/CrBr3/train_ns/seed1/latt_b16x30_s16x30_z3
+  transitions_per_trajectory: 250
+physics:
+  beta: 0.02
+  coarse_volume: 480.0
+  external_field: 0.0
+  dt: 0.002
+model:
+  class: model_a_film
+  drift:
+    num_layers: 28
+    patch_size: 7
+    kernel_size: 7
+    kernel_normalize_mode: sum
+    jz_normalize_mode: none
+    mlp_hidden: 64
+    mlp_layers: 3
+    n_components: 3
+  factor:
+    patch_size: 7
+    factor_radius: 1
+    likelihood_radius: 1
+    n_components: 3
+    hidden_channels: 32
+    n_layers: 3
+    activation: tanh
+    structure: full
+    spin_flip_even: true
+    symmetry: none
+    axial: true
+    projector_epsilon: 0.05
+  thermodynamics:
+    num_layers: 28
+    patch_size: 7
+    kernel_normalize_mode: sum
+    jz_normalize_mode: none
+    mlp_hidden: [64, 64, 64]
+    n_components: 3
+    spin_flip_even: false
+training:
+  procedure:
+    - name: drift
+      trainer: film_weak_prior
+      loss: forward_rate_mse
+      config:
+        start_time_idx: 50
+        end_time_idx: 251
+        target_scale: 43.27
+        batch_size: 256
+        epochs: 3000
+        steps_per_epoch: 100
+        learning_rate: 0.001
+        decay_step: 300
+        decay_factor: 0.8
+        log_interval: 20
+    - name: dissipation
+      trainer: film_finite_range_factor
+      loss: window_gaussian_nll
+      requires: [drift]
+      config:
+        batch_size: 128
+        epochs: 1000
+        steps_per_epoch: 20
+        learning_rate: 0.001
+        decay_step: 200
+        decay_factor: 0.5
+        grad_clip: 5.0
+        jitter: 1.0e-8
+    - name: thermodynamics
+      trainer: film_free_energy_interaction
+      loss: direct_forward_rate
+      requires: [dissipation]
+      config:
+        start_time_idx: 50
+        end_time_idx: 251
+        frame_stride: 3
+        divergence_chunk: 1024
+        target_scale: 43.303942631084105
+        frames_per_step: 4
+        steps: 2000
+        learning_rate: 0.001
+        decay_step: 400
+        decay_factor: 0.5
+        grad_clip: 1.0
+        log_interval: 20
+        target_cache: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/stage3_targets.pt
+inference:
+  steps: 125
+
+# The evaluation and visualization roots intentionally mirror the experiment
+# name and the three-stage outputs.  After training, stage 3 is written to
+# ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/thermodynamics/thermodynamics_last.pt.
+evaluation:
+  stage3_checkpoint: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/thermodynamics/thermodynamics_last.pt
+  kernel_output_dir: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/evaluation/kernels
+  free_energy_output_dir: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/evaluation/free_energy
+  normalize_wxy: sum
+  layer_kernel_name: Jz.csv
+  spatial_kernel_name: w_xy.csv
+  energy_output_stem: two_block_free_energy_2d
+  num_mean: 401
+  num_ell: 401
+  split_after_layer: 14
+  batch_size: 2048
+  dtype: float64
+
+visualization:
+  kernel_dir: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/evaluation/kernels
+  jz_jxy_output_stem: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/visualization/Jz_Jxy_styled
+  free_energy_dir: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/evaluation/free_energy
+  free_energy_output_stem: ${DEEPMESOD_OUTPUT_ROOT}/CrBr3/visualization/two_block_free_energy_2d
+  vlim: 1.0

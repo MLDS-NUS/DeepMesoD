@@ -1,0 +1,85 @@
+run:
+  name: synthetic-smoke
+  seed: 42
+  output_dir: ../outputs/smoke
+device: cpu
+data:
+  train:
+    - ../data/synthetic/train/seed1
+    - ../data/synthetic/train/seed2
+    - ../data/synthetic/train/seed3
+  test:
+    - ../data/synthetic/test/seed4
+    - ../data/synthetic/test/seed5
+    - ../data/synthetic/test/seed6
+  transitions_per_trajectory: 4
+model:
+  class: model_a_scalar
+  drift:
+    patch_size: 7
+    hidden: [8]
+    activation: softplus
+  factor:
+    patch_size: 7
+    factor_radius: 1
+    likelihood_radius: 1
+    hidden_channels: 4
+    layers: 3
+    dilations: [1, 1, 1]
+    activation: tanh
+    parameterization: amplitude_shape
+    spin_flip_even: true
+    d4_equivariant: false
+  thermodynamics:
+    patch_size: 7
+    hidden: [8]
+    activation: softplus
+    external_field: 0.0
+    interaction_constraint: centrosymmetric_sum_one
+training:
+  procedure:
+    - name: drift
+      trainer: local_drift
+      loss: forward_rate_mse
+      config:
+        sampling: joint
+        balanced_bins: 4
+        batch_size: 8
+        epochs: 1
+        batches_per_epoch: 2
+        learning_rate: 0.001
+        decay_step: 10
+        decay_factor: 1.0
+    - name: dissipation
+      trainer: finite_range_factor
+      loss: window_gaussian_nll
+      requires: [drift]
+      config:
+        sampling: center
+        balanced_bins: 4
+        batch_size: 8
+        epochs: 1
+        batches_per_epoch: 2
+        learning_rate: 0.001
+        decay_step: 10
+        decay_factor: 1.0
+        jitter: 1.0e-6
+    - name: thermodynamics
+      trainer: free_energy_interaction
+      loss: direct_forward_rate
+      requires: [dissipation]
+      config:
+        objective: direct
+        sampling: center
+        target_batch_size: 2
+        balanced_bins: 4
+        max_state_weight: 4
+        batch_size: 8
+        steps: 2
+        learning_rate: 0.001
+        decay_step: 10
+        decay_factor: 1.0
+inference:
+  mode: pde
+  steps: 2
+  compile: false

@@ -1,0 +1,150 @@
+# Source-only reproduction manifest for the migrated 2D-ferromagnet pipeline.
+# Set MESOSCOPIC_MODEL_ROOT to the old repository root and
+# DEEPMESOD_OUTPUT_ROOT to a private output location.
+run:
+  name: 2D-ferromagnet
+  seed: 122
+  output_dir: ${DEEPMESOD_OUTPUT_ROOT}/2D-ferromagnet/pipeline-r1
+device: cuda
+simulation:
+  generator: Vampire
+  input_dir: data-files
+  description: 2D ferromagnet with periodic x/y and nonperiodic z boundaries
+data:
+  coarse_graining:
+    method: periodic_block_mean
+    block_size: 16
+    coarse_size: 64
+    coarse_volume: 256
+    output_format: deepmesod-trajectory
+  train:
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed1/processed_m/seed1/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed2/processed_m/seed2/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed3/processed_m/seed3/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed4/processed_m/seed4/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed5/processed_m/seed5/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed6/processed_m/seed6/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed7/processed_m/seed7/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed8/processed_m/seed8/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed9/processed_m/seed9/M64_B16/round0
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed10/processed_m/seed10/M64_B16/round0
+  test:
+    - ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/2D-4-large-damping/seed1/processed_m/seed1/M64_B16/round0
+  # Seed 10 has 120 frames; validation uses the shortest common prefix.
+  transitions_per_trajectory: 119
+model:
+  class: model_a_vector
+  drift:
+    patch_size: 13
+    kernel_size: 13
+    kernel_type: matrix
+    kernel_normalize_mode: sum
+    mlp_hidden: 64
+    mlp_layers: 3
+    n_components: 3
+  factor:
+    patch_size: 15
+    factor_radius: 1
+    likelihood_radius: 1
+    n_components: 3
+    hidden_channels: 32
+    n_layers: 3
+    activation: tanh
+    structure: full
+    spin_flip_even: true
+    symmetry: none
+  thermodynamics:
+    patch_size: 13
+    kernel_size: 13
+    kernel_type: matrix
+    kernel_normalize_mode: sum
+    mlp_hidden: [64, 64, 64]
+    n_components: 3
+    jm_mode: raw
+training:
+  procedure:
+    - name: drift
+      trainer: vector_local_drift
+      loss: forward_rate_mse
+      config:
+        start_time_idx: 75
+        end_time_idx: 150
+        balanced_bins: 5
+        batch_size: 256
+        epochs: 3000
+        batches_per_epoch: 20
+        learning_rate: 0.001
+        decay_step: 200
+        decay_factor: 0.5
+        ball_projection: true
+        ball_weight: 0.001
+    - name: dissipation
+      trainer: vector_finite_range_factor
+      loss: window_gaussian_nll
+      requires: [drift]
+      config:
+        start_time_idx: 0
+        end_time_idx: 150
+        balanced_bins: 10
+        batch_size: 128
+        epochs: 1000
+        batches_per_epoch: 20
+        learning_rate: 0.001
+        decay_step: 200
+        decay_factor: 0.5
+        grad_clip: 5.0
+        jitter: 1.0e-8
+    - name: thermodynamics
+      trainer: vector_free_energy_interaction
+      loss: direct_forward_rate
+      requires: [dissipation]
+      config:
+        objective: direct
+        start_time_idx: 75
+        end_time_idx: 150
+        target_batch_size: 1
+        frames_per_step: 4
+        steps: 20000
+        learning_rate: 0.001
+        decay_step: 4000
+        decay_factor: 0.5
+        grad_clip: 1.0
+        log_interval: 500
+        checkpoint_interval: 5000
+inference:
+  steps: 125
+
+# Existing artifacts are optional for a fresh training run. They point to the
+# historical pipeline_r1 result so evaluation can be reproduced without
+# copying binary checkpoints into this source repository.
+artifacts:
+  drift:
+    checkpoint: ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/checkpoints/pipeline_r1/stage1/best_model.pth
+  dissipation:
+    checkpoint: ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/checkpoints/pipeline_r1/stage2/factor_last.pth
+  thermodynamics:
+    checkpoint: ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/checkpoints/pipeline_r1/stage3/checkpoints/step020000.pth
+
+# The evaluation root is also the visualization data root. The evaluator
+# writes data/rollout_deepmesoD here; the old export root is used only for the
+# unchanged baseline/CNN/B-panel reference tables.
+evaluation:
+  figure3:
+    output_dir: ${DEEPMESOD_OUTPUT_ROOT}/2D-ferromagnet/pipeline-r1/evaluation/figure3
+    stage3_checkpoint: ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/checkpoints/pipeline_r1/stage3/checkpoints/step020000.pth
+    factor_checkpoint: ${MESOSCOPIC_MODEL_ROOT}/data-local/2D-ferromagnet/checkpoints/pipeline_r1/stage2/factor_last.pth
+    initial_frame: ${MESOSCOPIC_MODEL_ROOT}/exports/fig3_deepmesoD/data/rollout_deepmesoD/initial_frame_t20.npy
+    t_start: 20
+    t_end: 25000
+    dt: 1
+    # 0 reproduces the historical pure-gradient-flow variant.
+    divk_every: 50
+    jacobian_chunk_size: 1024
+    progress_every: 2500
+    device: cuda
+
+visualization:
+  figure3:
+    data_root: ${DEEPMESOD_OUTPUT_ROOT}/2D-ferromagnet/pipeline-r1/evaluation/figure3
+    reference_data_root: ${MESOSCOPIC_MODEL_ROOT}/exports/fig3_deepmesoD
+    output_stem: ${DEEPMESOD_OUTPUT_ROOT}/2D-ferromagnet/pipeline-r1/visualization/figure3_2D_ferromagnet

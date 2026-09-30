@@ -1,0 +1,76 @@
+#===================================================
+# VAMPIRE input: coarsening-dynamics run (TEMPLATE)
+# Random start quenched to T_run, watch domain growth.
+#
+# BEFORE SUBMITTING:
+#   1. Set sim:temperature to 0.6-0.9 x Tc measured
+#      from the input_Tc scan (placeholder below).
+#   2. For ensemble statistics run several copies with
+#      different create:spin-initialisation-random-seed
+#      AND sim:integrator-random-seed values.
+# Uses the normal CrBr3.mat (random initial spins).
+#===================================================
+
+#---------- structure (big box: room for L(t) to grow) ----------
+material:unit-cell-file = "CrBr3.ucf"    # 84 layers (51.4 nm), R/AB fault
+material:file = "CrBr3.mat"
+
+dimensions:system-size-x = 200 !nm
+dimensions:system-size-y = 200 !nm
+dimensions:system-size-z = 51.408 !nm   # must equal ucf cell height (84 x 6.12 A)
+# ~19.7M spins (~319x184 cells x 336 atoms): 128 MPI ranks, ~7x the 12-layer
+# cost. STORAGE WARNING: full-atom text frame ~920 MB; at 1 ps rate (500
+# frames) that is ~460 GB per run. Run this thick case on only 1-3 seeds to
+# SEE the z-domain structure; keep the big L(t) ensemble on the 12-layer cell.
+# Switch config:output-format = binary to roughly halve size.
+
+create:periodic-boundaries-x
+create:periodic-boundaries-y
+
+create:spin-initialisation-random-seed = 1
+sim:integrator-random-seed = 1
+
+#---------- simulation ----------
+sim:temperature = 50.0         # ~0.5 x Tc (measured Tc ~ 105 K from run-Tc):
+                               # crisp domains, coarsening still active.
+                               # companion runs: 85 K (0.8 Tc, faster), 10 K (frozen ref)
+
+sim:integrator = llg-heun
+sim:time-step = 1.0e-15
+
+sim:program = time-series
+sim:equilibration-time-steps = 0     # no equilibration: t=0 IS the quench
+sim:total-time-steps = 500000        # 500 ps (dense snapshots > long run)
+sim:time-steps-increment = 1
+
+#---------- output ----------
+output:output-rate = 1000            # stats every 1 ps
+
+output:real-time
+output:temperature
+output:magnetisation
+output:material-magnetisation
+output:magnetisation-length
+
+#---------- cell-averaged snapshots (uniform coarse-grain grid) ----------
+# Component-wise cell size so V_c is UNIFORM and the grid aligns to layers:
+#   x,y = 2 nm      -> 100 x 100 (200/2 exact)
+#   z   = 1.836 nm  -> exactly 3 atomic layers/cell, 28 cells (84/3),
+#                      and the fault (layer 42/43) sits on a cell boundary.
+cells:macro-cell-size-x = 2 !nm
+cells:macro-cell-size-y = 2 !nm
+cells:macro-cell-size-z = 1.836 !nm
+config:macro-cells
+config:macro-cells-output-rate = 2000    # every 2 ps (coarsening is fastest early)
+
+#---------- full atomic snapshots (visualisation / custom analysis) ----------
+# DENSE: every 2 ps, in step with the macro-cells frames.
+# ~130 MB per text frame at 2.8M atoms -> 250 frames = ~33 GB per run.
+# (config:output-format = binary halves the size if storage gets tight)
+config:atoms
+config:atoms-output-rate = 2000
+
+config:output-format = text
+
+screen:time-steps
+screen:magnetisation-length

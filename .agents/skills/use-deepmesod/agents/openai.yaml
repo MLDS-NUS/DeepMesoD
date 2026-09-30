@@ -1,0 +1,4 @@
+interface:
+  display_name: "Use DeepMesoD"
+  short_description: "Run and audit DeepMesoD scientific workflows"
+  default_prompt: "Use $use-deepmesod to validate my private trajectories, run the configured workflow in a fresh output directory, and interpret the generated operator report."

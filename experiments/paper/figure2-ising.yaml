@@ -1,0 +1,31 @@
+figure: figure2-ising
+source_figure: final_figure_v10
+plot_data:
+  "0.75": ${DEEPMESOD_PAPER_DATA}/figure2_T0.75.npz
+  "1.5": ${DEEPMESOD_PAPER_DATA}/figure2_T1.5.npz
+output: generated/figure2-ising
+protocol:
+  dynamical_class: model_a_scalar
+  boundary: periodic
+  training_trajectories: [1, 2, 3]
+  model_seeds: [42, 43, 44]
+  checkpoint_selection: final_scheduled_checkpoint
+  sampling: state_balanced
+  forward_increment: single_step_within_trajectory
+  stage3_objective: cg_force_target
+  interaction_constraint_in_archived_run: centrosymmetric_and_unit_sum
+  interaction_force_convention: direct_g_prime_plus_m_minus_Jm
+  uncertainty:
+    deepmesod: population_standard_deviation_across_model_seeds
+    microscopic: population_standard_deviation_across_rounds
+  temperature_0.75:
+    transitions_per_trajectory: 500
+    rollout_steps: 4998
+  temperature_1.5:
+    transitions_per_trajectory: 100
+    rollout_steps: 998
+display:
+  dissipation: conditional_complete_response_K_times_one
+  free_energy: each_curve_shifted_by_own_minimum
+  free_energy_range: [-0.95, 0.95]
+  interaction: radial_shell_average_excluding_center

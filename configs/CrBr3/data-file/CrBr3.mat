@@ -1,0 +1,28 @@
+#===================================================
+# CrBr3 material file for VAMPIRE
+# material 1 = layers 1-6  (below stacking fault)
+# material 2 = layers 7-12 (above stacking fault)
+# Both are identical Cr3+ (S=3/2); the split only lets
+# you track the magnetisation of each block separately.
+# Exchange is defined explicitly in CrBr3.ucf (isotropic),
+# so no exchange-matrix is needed here.
+#---------------------------------------------------
+material:num-materials = 2
+#---------------------------------------------------
+material[1]:material-name = CrBr3-below-fault
+material[1]:material-element = Cr
+material[1]:unit-cell-category = 1   # claims ucf atoms with mat id 0 (layers 1-6)
+material[1]:atomic-spin-moment = 3.02 !muB
+material[1]:uniaxial-anisotropy-constant = 8.93e-24   # J/atom  (= Ku1*V_atom, easy axis || c)
+material[1]:uniaxial-anisotropy-direction = 0.0, 0.0, 1.0
+material[1]:damping-constant = 0.1
+material[1]:initial-spin-direction = random
+#---------------------------------------------------
+material[2]:material-name = CrBr3-above-fault
+material[2]:material-element = Cr
+material[2]:unit-cell-category = 2   # claims ucf atoms with mat id 1 (layers 7-12)
+material[2]:atomic-spin-moment = 3.02 !muB
+material[2]:uniaxial-anisotropy-constant = 8.93e-24
+material[2]:uniaxial-anisotropy-direction = 0.0, 0.0, 1.0
+material[2]:damping-constant = 0.1
+material[2]:initial-spin-direction = random

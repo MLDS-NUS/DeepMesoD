@@ -1,0 +1,88 @@
+run:
+  name: ising-t15-cg-seed42
+  seed: 42
+  output_dir: ../../outputs/ising/t15/cg/seed42
+device: cuda
+data:
+  train:
+    - ${DEEPMESOD_DATA}/ising/t15/train/seed1
+    - ${DEEPMESOD_DATA}/ising/t15/train/seed2
+    - ${DEEPMESOD_DATA}/ising/t15/train/seed3
+  test:
+    - ${DEEPMESOD_DATA}/ising/t15/test/round0
+    - ${DEEPMESOD_DATA}/ising/t15/test/round1
+    - ${DEEPMESOD_DATA}/ising/t15/test/round2
+  transitions_per_trajectory: 100
+model:
+  class: model_a_scalar
+  drift:
+    patch_size: 15
+    hidden: [128, 128, 128]
+    activation: softplus
+  factor:
+    patch_size: 15
+    factor_radius: 1
+    likelihood_radius: 1
+    hidden_channels: 32
+    layers: 3
+    dilations: [1, 2, 4]
+    activation: tanh
+    parameterization: amplitude_shape
+    spin_flip_even: true
+    d4_equivariant: false
+  thermodynamics:
+    patch_size: 15
+    hidden: [128, 128, 128]
+    activation: softplus
+    external_field: 0.0
+    interaction_constraint: centrosymmetric_sum_one
+training:
+  procedure:
+    - name: drift
+      trainer: local_drift
+      loss: forward_rate_mse
+      config:
+        sampling: joint
+        balanced_bins: 10
+        batch_size: 256
+        epochs: 2000
+        batches_per_epoch: 500
+        learning_rate: 0.001
+        decay_step: 500
+        decay_factor: 0.5
+    - name: dissipation
+      trainer: finite_range_factor
+      loss: window_gaussian_nll
+      requires: [drift]
+      config:
+        sampling: center
+        balanced_bins: 10
+        batch_size: 256
+        epochs: 2000
+        batches_per_epoch: 100
+        learning_rate: 0.0005
+        decay_step: 200
+        decay_factor: 0.5
+        jitter: 1.0e-8
+    - name: thermodynamics
+      trainer: free_energy_interaction
+      loss: cg_force_target
+      requires: [dissipation]
+      config:
+        objective: cg
+        sampling: center
+        target_batch_size: 4
+        ridge_relative: 1.0e-4
+        cg_iterations: 100
+        cg_tolerance: 1.0e-5
+        balanced_bins: 10
+        max_state_weight: 10
+        batch_size: 256
+        steps: 400000
+        learning_rate: 0.001
+        decay_step: 40000
+        decay_factor: 0.5
+inference:
+  mode: pde
+  steps: 998
+  compile: true

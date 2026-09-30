@@ -1,0 +1,28 @@
+run:
+  name: custom-procedure
+  seed: 42
+  output_dir: ../../outputs/custom-procedure
+device: cuda
+data:
+  train: [../../data/processed/train/trajectory0]
+  test: [../../data/processed/test/trajectory0]
+  transitions_per_trajectory: 100
+model:
+  class: your_registered_class
+  drift: {}
+  factor: {}
+  thermodynamics: {}
+training:
+  procedure:
+    - name: your_first_stage
+      trainer: your_registered_trainer
+      loss: your_registered_loss
+      config: {}
+    - name: your_second_stage
+      trainer: another_registered_trainer
+      loss: another_registered_loss
+      requires: [your_first_stage]
+      config: {}
+inference:
+  mode: pde
+  steps: 100

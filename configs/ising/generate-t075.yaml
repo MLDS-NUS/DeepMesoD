@@ -1,0 +1,14 @@
+generator: ising_kac_tau_leaping
+output_dir: ../../data/raw/ising/t075/seed1
+size: 4096
+block: 32
+steps: 5000
+temperature: 0.75
+interaction_strength: 1.0
+external_field: 0.0
+epsilon: 0.015625
+domain_length_x: 1.0
+domain_length_y: 1.0
+tau_fraction: 0.01
+seed: 1
+device: cuda
